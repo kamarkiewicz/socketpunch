@@ -1,0 +1,15 @@
+<svg width="100%" viewBox="0 0 491.53 108.67" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">socketpunch logo</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">socketpunch — many websockets in, first unique payload out</desc>
+
+  <defs>
+    
+  </defs>
+
+  <text font-family="'Barlow Condensed', 'Impact', Arial Narrow, sans-serif" font-size="92" font-weight="900" letter-spacing="-1" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, Impact, &quot;Arial Narrow&quot;, sans-serif;font-size:92px;font-weight:900;text-anchor:start;dominant-baseline:auto">
+    <tspan x="0" y="78" fill="#1A1A1A" style="fill:rgb(26, 26, 26);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, Impact, &quot;Arial Narrow&quot;, sans-serif;font-size:92px;font-weight:900;text-anchor:start;dominant-baseline:auto">socket</tspan><tspan fill="#FF8C00" style="fill:rgb(255, 140, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, Impact, &quot;Arial Narrow&quot;, sans-serif;font-size:92px;font-weight:900;text-anchor:start;dominant-baseline:auto">punch</tspan>
+  </text>
+
+  <text x="2" y="96" font-family="'Barlow Condensed', Arial Narrow, sans-serif" font-size="13" font-weight="700" fill="#999999" letter-spacing="4" style="fill:rgb(153, 153, 153);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Barlow Condensed&quot;, &quot;Arial Narrow&quot;, sans-serif;font-size:13px;font-weight:700;text-anchor:start;dominant-baseline:auto">WEBSOCKET · MANY IN · FIRST OUT</text>
+
+</svg>
