@@ -25,6 +25,8 @@ from typing import Any
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 GAMMA_EVENT_BY_SLUG = "https://gamma-api.polymarket.com/events/slug/{slug}"
 WINDOW_SECS = 300
+ACTIVE_PROCESS: subprocess.Popen[bytes] | None = None
+SHUTTING_DOWN = False
 
 
 def log(message: str) -> None:
@@ -109,17 +111,52 @@ def socketpunch_command(args: argparse.Namespace, root: Path) -> list[str]:
     return command
 
 
+def send_process_signal(process: subprocess.Popen[bytes], signum: int) -> None:
+    try:
+        if os.name == "posix":
+            os.killpg(process.pid, signum)
+        else:
+            process.send_signal(signum)
+    except ProcessLookupError:
+        pass
+
+
+def forward_signal(signum: int, _frame: Any) -> None:
+    global SHUTTING_DOWN
+
+    if SHUTTING_DOWN and ACTIVE_PROCESS and ACTIVE_PROCESS.poll() is None:
+        send_process_signal(ACTIVE_PROCESS, signal.SIGKILL)
+        return
+
+    SHUTTING_DOWN = True
+    if ACTIVE_PROCESS and ACTIVE_PROCESS.poll() is None:
+        send_process_signal(ACTIVE_PROCESS, signum)
+
+
+def wait_for_exit(process: subprocess.Popen[bytes], timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            return True
+        time.sleep(0.05)
+
+    return process.poll() is not None
+
+
 def stop_process(process: subprocess.Popen[bytes]) -> None:
-    for stop in (lambda: process.send_signal(signal.SIGINT), process.terminate, process.kill):
+    stops = (
+        lambda: send_process_signal(process, signal.SIGINT),
+        lambda: send_process_signal(process, signal.SIGTERM),
+        lambda: send_process_signal(process, signal.SIGKILL),
+    )
+
+    for stop in stops:
         if process.poll() is not None:
             return
 
         stop()
-        try:
-            process.wait(timeout=3)
+        if wait_for_exit(process, 3):
             return
-        except subprocess.TimeoutExpired:
-            pass
 
 
 def run_until_timeout(
@@ -128,15 +165,35 @@ def run_until_timeout(
     cwd: Path,
     stdout: int | Any | None,
 ) -> int:
-    process = subprocess.Popen(command, cwd=cwd, stdout=stdout)
+    global ACTIVE_PROCESS
+
+    process = subprocess.Popen(command, cwd=cwd, stdout=stdout, start_new_session=True)
+    ACTIVE_PROCESS = process
+
     try:
-        return process.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        stop_process(process)
-        return 0
+        deadline = time.monotonic() + timeout
+        while True:
+            code = process.poll()
+            if code is not None:
+                return code
+
+            if SHUTTING_DOWN:
+                stop_process(process)
+                return 130
+
+            if time.monotonic() >= deadline:
+                stop_process(process)
+                return 0
+
+            time.sleep(0.1)
+    finally:
+        ACTIVE_PROCESS = None
 
 
 def main() -> int:
+    signal.signal(signal.SIGINT, forward_signal)
+    signal.signal(signal.SIGTERM, forward_signal)
+
     parser = argparse.ArgumentParser(
         description="Subscribe socketpunch to rolling Polymarket BTC 5-minute market ticks."
     )
@@ -149,7 +206,7 @@ def main() -> int:
     parser.add_argument(
         "--count",
         type=int,
-        default=1,
+        default=100,
         help="socketpunch websocket connection count",
     )
     parser.add_argument(
@@ -181,6 +238,9 @@ def main() -> int:
 
     try:
         while True:
+            if SHUTTING_DOWN:
+                return 130
+
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 return 0
@@ -221,6 +281,9 @@ def main() -> int:
             log(f"running socketpunch for {run_for:.1f}s")
 
             code = run_until_timeout(command, run_for, root, output)
+            if SHUTTING_DOWN:
+                return 130
+
             if code != 0:
                 log(f"socketpunch exited with code {code}")
     finally:
