@@ -1,12 +1,15 @@
 use ahash::RandomState;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[repr(align(64))]
+struct CachePaddedAtomicU64(AtomicU64);
+
 /// A lock-free, lossy deduplicator optimized for high-throughput tick streams.
 /// It uses a fixed-size array of `AtomicU64` slots. When a message arrives,
 /// its hash is computed. If the hash matches the value in the corresponding slot,
 /// it's considered a duplicate. Otherwise, the slot is overwritten with the new hash.
 pub struct Dedup {
-    slots: Box<[AtomicU64]>,
+    slots: Box<[CachePaddedAtomicU64]>,
     mask: usize,
     hasher: RandomState,
 }
@@ -18,7 +21,7 @@ impl Dedup {
         let size = 1usize << capacity_power_of_two;
         let mut slots = Vec::with_capacity(size);
         for _ in 0..size {
-            slots.push(AtomicU64::new(0));
+            slots.push(CachePaddedAtomicU64(AtomicU64::new(0)));
         }
         Self {
             slots: slots.into_boxed_slice(),
@@ -34,7 +37,7 @@ impl Dedup {
         let hash = if hash == 0 { 1 } else { hash }; // 0 is reserved for empty slot
 
         let idx = (hash as usize) & self.mask;
-        let slot = &self.slots[idx];
+        let slot = &self.slots[idx].0;
 
         // Fast path: read without dirtying the cache line
         let current = slot.load(Ordering::Relaxed);

@@ -3,7 +3,7 @@ mod ws_worker;
 
 use clap::Parser;
 use dedup::Dedup;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::sync::Arc;
 use url::Url;
 use ws_worker::{HeartbeatConfig, run_worker};
@@ -53,15 +53,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dedup = Arc::new(Dedup::new(args.dedup_power));
     let (tx, rx) = flume::unbounded::<Vec<u8>>();
 
-    tokio::spawn(async move {
-        while let Ok(msg) = rx.recv_async().await {
-            let mut stdout = io::stdout().lock();
-            // Write to stdout (or could be extended to a Unix socket)
-            if let Ok(text) = std::str::from_utf8(&msg) {
-                let _ = writeln!(stdout, "{}", text);
-            } else {
-                let _ = writeln!(stdout, "<binary payload {} bytes>", msg.len());
+    std::thread::spawn(move || {
+        let stdout = io::stdout();
+        let mut stdout = BufWriter::new(stdout.lock());
+
+        while let Ok(msg) = rx.recv() {
+            if write_message(&mut stdout, &msg).is_err() {
+                break;
             }
+
+            while let Ok(msg) = rx.try_recv() {
+                if write_message(&mut stdout, &msg).is_err() {
+                    return;
+                }
+            }
+
+            let _ = stdout.flush();
         }
     });
 
@@ -82,4 +89,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Shutting down...");
 
     Ok(())
+}
+
+fn write_message<W: Write>(writer: &mut W, msg: &[u8]) -> io::Result<()> {
+    writer.write_all(msg)?;
+    writer.write_all(b"\n")
 }

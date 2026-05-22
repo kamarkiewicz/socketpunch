@@ -3,7 +3,7 @@ use base64::Engine;
 use fastwebsockets::{FragmentCollector, Payload, handshake};
 use http::{Request, Uri};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
 use url::Url;
@@ -59,13 +59,7 @@ async fn connect_and_listen(
     let tcp_stream = TcpStream::connect(&addr).await?;
     tcp_stream.set_nodelay(true)?;
 
-    let nonce: [u8; 16] = std::array::from_fn(|i| {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        (nanos >> (i * 8)) as u8
-    });
+    let nonce: [u8; 16] = rand::random();
     let sec_websocket_key = base64::engine::general_purpose::STANDARD.encode(nonce);
 
     let uri: Uri = target_url.as_str().parse()?;
@@ -129,10 +123,9 @@ async fn connect_and_listen(
 
         match frame.opcode {
             fastwebsockets::OpCode::Text | fastwebsockets::OpCode::Binary => {
-                let data = frame.payload.as_ref();
-                if dedup.is_unique(data) {
-                    // Send to output channel
-                    let _ = output_tx.send(data.to_vec());
+                let payload = frame.payload;
+                if dedup.is_unique(payload.as_ref()) {
+                    let _ = output_tx.send(payload.into());
                 }
             }
             fastwebsockets::OpCode::Close => {
